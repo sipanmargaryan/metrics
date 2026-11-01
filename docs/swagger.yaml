@@ -1,0 +1,221 @@
+basePath: /api/v1
+definitions:
+  helpers.ErrorResponse:
+    properties:
+      error:
+        type: string
+      fields:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  order.CreateOrderRequest:
+    properties:
+      product_id:
+        example: 1
+        type: integer
+      quantity:
+        example: 10
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
+  order.OrderCreatedResponse:
+    properties:
+      id:
+        example: 1
+        type: integer
+    type: object
+  product.CreateProductRequest:
+    properties:
+      name:
+        example: Office supplies
+        type: string
+      quantity:
+        example: 100
+        minimum: 0
+        type: integer
+      warehouse_id:
+        example: 1
+        type: integer
+    required:
+    - name
+    - warehouse_id
+    type: object
+  product.ProductResponse:
+    properties:
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Office supplies
+        type: string
+      quantity:
+        example: 100
+        type: integer
+      warehouse_id:
+        example: 1
+        type: integer
+    type: object
+  warehouse.CreateWarehouseRequest:
+    properties:
+      name:
+        example: Yerevan warehouse
+        type: string
+    required:
+    - name
+    type: object
+  warehouse.WarehouseResponse:
+    properties:
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Yerevan warehouse
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Metrics order API.
+  title: Metrics API
+  version: "1.0"
+paths:
+  /orders:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Order to create
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/order.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/order.OrderCreatedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+      summary: Create an order
+      tags:
+      - orders
+  /products:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/product.ProductResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+      summary: List products
+      tags:
+      - products
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Product to create
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/product.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/product.ProductResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+      summary: Create a product
+      tags:
+      - products
+  /warehouses:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/warehouse.WarehouseResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+      summary: List warehouses
+      tags:
+      - warehouses
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Warehouse to create
+        in: body
+        name: warehouse
+        required: true
+        schema:
+          $ref: '#/definitions/warehouse.CreateWarehouseRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/warehouse.WarehouseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+      summary: Create a warehouse
+      tags:
+      - warehouses
+swagger: "2.0"

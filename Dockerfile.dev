@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1
+FROM golang:1.27.3-alpine
+ARG AIR_VERSION=v1.63.0
+RUN go install github.com/air-verse/air@${AIR_VERSION}
+
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o /app/migrate ./cmd/migrate
+
+EXPOSE 8080
+ENTRYPOINT ["air", "-c", ".air.toml"]

@@ -1,0 +1,22 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "CGO_ENABLED=0 go build -o ./tmp/metrics ./cmd/api"
+  bin = "./tmp/metrics"
+  include_ext = ["go", "sql"]
+  include_file = ["go.mod", "go.sum"]
+  exclude_dir = ["tmp", "bin", "vendor", ".git", ".agents", ".aws", ".codex"]
+  exclude_regex = ["_test\\.go$"]
+  exclude_unchanged = true
+  delay = 500
+  stop_on_error = true
+  send_interrupt = true
+  kill_delay = "2s"
+  log = "build-errors.log"
+
+[log]
+  time = true
+
+[screen]
+  clear_on_rebuild = false
