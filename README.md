@@ -47,6 +47,17 @@ make down
 
 ## Monitoring
 
+The API and migration command write structured JSON logs to stdout using Go's
+`log/slog`. Entries include `time`, `level`, `msg`, and `service_name`. HTTP
+request summaries include `request_id`, `method`, `route`, `status`,
+`duration_ms`, and `response_bytes`; 4xx responses use WARN and 5xx use ERROR.
+Every request receives a generated ID returned in `X-Request-ID`. Unexpected
+errors and recovered panics include the same ID, with panic stacks encoded in
+the JSON entry. Request bodies, headers, query strings, and SQL statements are
+not captured. Gin's route debug output and GORM's default SQL logger are disabled.
+These logs are available through `make logs SERVICE=app`; shipping to Loki is
+not configured yet.
+
 `make up` also starts Prometheus, Loki, and Grafana:
 
 - Prometheus: http://localhost:9090 (scrape status under Targets).

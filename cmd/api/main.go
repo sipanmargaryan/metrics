@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,6 +22,7 @@ import (
 	"metrics/internal/config"
 	"metrics/internal/database"
 	"metrics/internal/helpers"
+	"metrics/internal/logging"
 	"metrics/internal/middleware"
 	"metrics/internal/routes"
 )
@@ -31,34 +32,37 @@ import (
 // @description Metrics order API.
 // @BasePath /api/v1
 func main() {
+	slog.SetDefault(logging.New(os.Stdout, "metrics"))
 
 	if err := godotenv.Load(); err != nil {
-		log.Println("warning: .env file not found")
+		slog.Warn(".env file not found")
 	}
 
 	cfg := config.Load()
 	if err := helpers.RegisterValidators(); err != nil {
-		log.Fatalf("register validators: %v", err)
+		fatal("register validators", err)
 	}
 
 	//  This opens connection pool
 	db, err := database.ConnecPostgres(cfg)
 	if err != nil {
-		log.Fatal(err)
+		fatal("application failed", err)
 	}
 
 	// *sql.DB is not a single connection. It's a connection pool manager. under the hood gorm uses sql/database package
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatal(err)
+		fatal("application failed", err)
 	}
 	sqlDB.SetMaxOpenConns(50)
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
+	router.Use(middleware.RequestLogger(slog.Default()))
 	middleware.RegisterMetrics(router)
-	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(middleware.RecoverPanics())
 	router.Use(middleware.ErrorHandler()) //Error handling moddleware
 
 	if cfg.Environment == "local" {
@@ -87,11 +91,11 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("server starting on %s", server.Addr)
+		slog.Info("server starting", "address", server.Addr)
 
 		if err := server.ListenAndServe(); err != nil &&
 			!errors.Is(err, http.ErrServerClosed) {
-			log.Fatal(err)
+			fatal("application failed", err)
 		}
 	}()
 
@@ -100,7 +104,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("shutting down server...")
+	slog.Info("server shutting down")
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
@@ -109,13 +113,18 @@ func main() {
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatal("server forced to shutdown:", err)
+		fatal("server forced to shutdown", err)
 	}
 
 	// Close database connections
 	if err := sqlDB.Close(); err != nil {
-		log.Fatal("database close error:", err)
+		fatal("database close failed", err)
 	}
 
-	log.Println("server stopped")
+	slog.Info("server stopped")
+}
+
+func fatal(message string, err error) {
+	slog.Error(message, "error", err)
+	os.Exit(1)
 }

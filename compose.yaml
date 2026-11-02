@@ -22,12 +22,12 @@ services:
       postgres:
         condition: service_healthy
     stop_grace_period: 15s
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/v1/warehouses"]
-      interval: 2s
-      timeout: 5s
-      retries: 60
-      start_period: 20s
+    # healthcheck:
+    #   test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/v1/warehouses"]
+    #   interval: 2s
+    #   timeout: 5s
+    #   retries: 60
+    #   start_period: 20s
 
   postgres:
     image: postgres:17-alpine
@@ -57,9 +57,9 @@ services:
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
-    depends_on:
-      app:
-        condition: service_healthy
+    # depends_on:
+    #   app:
+    #     condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
       interval: 5s

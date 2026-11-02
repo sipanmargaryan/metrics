@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"metrics/internal/helpers"
+	"metrics/internal/logging"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,6 +46,7 @@ func ErrorHandler() gin.HandlerFunc {
 			})
 
 		default:
+			logging.FromContext(c.Request.Context()).Error("request failed", "error", err)
 			c.JSON(http.StatusInternalServerError, helpers.ErrorResponse{
 				Error: "internal server error",
 			})

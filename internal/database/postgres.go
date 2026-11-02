@@ -5,6 +5,7 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"metrics/internal/config"
 )
@@ -19,5 +20,8 @@ func ConnecPostgres(cfg *config.Config) (*gorm.DB, error) {
 		cfg.Database.Port,
 	)
 
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	return gorm.Open(postgres.Open(dsn), &gorm.Config{
+		// Request error handling logs database failures without dumping SQL or parameters.
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 }
