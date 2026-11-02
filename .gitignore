@@ -4,3 +4,4 @@
 /bin/
 /tmp/
 /coverage.out
+__pycache__/

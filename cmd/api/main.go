@@ -24,7 +24,6 @@ import (
 	"metrics/internal/helpers"
 	"metrics/internal/middleware"
 	"metrics/internal/routes"
-	"metrics/migrations"
 )
 
 // @title Metrics API
@@ -57,14 +56,9 @@ func main() {
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	migrationCtx, migrationCancel := context.WithTimeout(context.Background(), time.Minute)
-	if err := migrations.Run(migrationCtx, sqlDB, "up"); err != nil {
-		migrationCancel()
-		log.Fatalf("migrate database: %v", err)
-	}
-	migrationCancel()
-
-	router := gin.Default()
+	router := gin.New()
+	middleware.RegisterMetrics(router)
+	router.Use(gin.Logger(), gin.Recovery())
 	router.Use(middleware.ErrorHandler()) //Error handling moddleware
 
 	if cfg.Environment == "local" {

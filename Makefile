@@ -1,7 +1,9 @@
 COMPOSE ?= docker compose
+BASE_URL ?= http://localhost:8080
+DELAY ?= 0.35
 .DEFAULT_GOAL := help
 
-.PHONY: help env up down build restart logs ps config db-up db-shell test swagger migrate-up migrate-down dev dev-down
+.PHONY: help env up down build restart logs ps config db-up db-shell test swagger migrate-up migrate-down dev dev-down load-test
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -9,7 +11,7 @@ help: ## Show available commands
 env: ## Create .env from env_example if it does not exist
 	@test -f .env || cp env_example .env
 
-up: env ## Start the API with Air and PostgreSQL in the background
+up: env ## Start the API, PostgreSQL, Prometheus, and Grafana
 	@mkdir -p tmp
 	$(COMPOSE) up -d --build --wait
 
@@ -43,6 +45,9 @@ db-shell: ## Open psql in the database container
 
 test: ## Run Go tests in Docker
 	docker build --target test --progress=plain .
+
+load-test: ## Send 100 API requests (requires Python 3)
+	python3 scripts/load_test.py --base-url "$(BASE_URL)" --delay "$(DELAY)"
 
 swagger: ## Generate Swagger docs using the pinned swag CLI (requires Go)
 	go run github.com/swaggo/swag/cmd/swag@v1.8.12 init -g main.go -d cmd/api,internal/order,internal/warehouse,internal/product,internal/helpers -o docs

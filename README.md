@@ -3,6 +3,7 @@
 Go API with PostgreSQL. Install Docker with the Compose plugin and GNU Make.
 
 ```sh
+make migrate-up
 make up
 ```
 
@@ -44,6 +45,46 @@ make db-shell
 make down
 ```
 
+## Monitoring
+
+`make up` also starts Prometheus and Grafana:
+
+- Prometheus: http://localhost:9090 (scrape status under Targets).
+- Grafana: http://localhost:3000, default login `admin` / `admin`.
+- API metrics: http://localhost:8080/metrics.
+
+Grafana automatically provisions the Prometheus data source and the **Metrics API**
+dashboard in the **Metrics** folder. Panels show availability, request rate, server
+errors, p95 latency, goroutines, and memory. Requests and latency use route patterns
+to avoid a separate series for each record ID. Prometheus scrapes every 15 seconds;
+rate charts need at least two scrapes. Air restarts reset API counters.
+
+Set `PROMETHEUS_PORT`, `GRAFANA_PORT`, `GRAFANA_ADMIN_USER`, and
+`GRAFANA_ADMIN_PASSWORD` in `.env` to override defaults. Grafana admin credentials
+are applied when its database is first initialized. Prometheus data (15-day
+retention) and Grafana settings persist in named volumes across `make down`.
+
+Configuration and dashboard files live in `monitoring/`. Restart Prometheus after
+editing its scrape configuration. This setup collects API and Go process metrics;
+it does not include a PostgreSQL or Docker host exporter.
+
+Generate 100 API requests for the dashboard (requires Python 3):
+
+```sh
+make load-test
+# Custom API port or a faster run:
+make load-test BASE_URL=http://localhost:8081 DELAY=0.1
+```
+
+The script creates one warehouse and product, then cycles through warehouse/product
+listing, order creation, validation failures, duplicate conflicts, and a missing
+route. Setup counts toward the 100 requests. Expected statuses are 200, 201, 400,
+404, and 409; the script reports unexpected responses and exits non-zero. Each run
+uses unique test names and leaves its warehouse, product, and orders in the database.
+The default delay spreads traffic over about 35 seconds. Allow another scrape
+interval before inspecting charts; the server-error panel stays at zero unless
+the API returns 5xx responses.
+
 `make down` preserves PostgreSQL data in a named volume. To intentionally delete
 the database and start fresh, run `docker compose down --volumes`.
 
@@ -56,15 +97,16 @@ Compose, the API always connects to `postgres:5432` regardless of `DB_HOST` and
 To run the API directly with a local Go toolchain matching `go.mod`:
 
 ```sh
-make db-up
+make migrate-up
 DB_HOST=127.0.0.1 DB_PORT=5432 go run ./cmd/api
 ```
 
 Set `DB_PORT` to your `POSTGRES_PORT` if you changed the published database port.
 The API loads the remaining settings from `.env`.
 
-PostgreSQL creates the configured database on first startup. The API applies
-pending versioned SQL migrations on startup. GORM AutoMigrate is no longer used.
+PostgreSQL creates the configured database on first startup. Apply schema changes
+explicitly with `make migrate-up` before starting the API and after adding
+migrations. The API does not run migrations or GORM AutoMigrate on startup.
 
 Migration files live in `migrations/` at the root of this repository:
 
@@ -79,7 +121,7 @@ Migration files live in `migrations/` at the root of this repository:
 
 Each migration runs in a transaction and is recorded in `schema_migrations`.
 A PostgreSQL advisory lock prevents concurrent migration runs. The SQL files are
-embedded in the API and migration binaries; rebuild after adding migrations.
+embedded in the migration binary; `make migrate-up` rebuilds it before running.
 
 ```sh
 make migrate-up     # Start PostgreSQL and apply pending migrations
@@ -87,8 +129,7 @@ docker compose stop app
 make migrate-down   # Revert only the latest migration
 ```
 
-The API reapplies pending migrations on its next startup. Rolling back the first
-migration drops the orders table and its data. Rolling back the warehouse
+Rolling back the first migration drops the orders table and its data. Rolling back the warehouse
 migration restores warehouse names on orders and drops the warehouses table.
 Standalone warehouse records without orders are lost in that rollback.
 Rolling back the product migration restores order names and warehouse IDs, then
