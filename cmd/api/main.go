@@ -38,6 +38,13 @@ func main() {
 		slog.Warn(".env file not found")
 	}
 
+	//  OLTP opentelemetry log collector
+	shutdownLogs, err := logging.SetupOTLP("metrics")
+	if err != nil {
+		fatal("initialize log export", err)
+	}
+	defer shutdownLogs()
+
 	cfg := config.Load()
 	if err := helpers.RegisterValidators(); err != nil {
 		fatal("register validators", err)

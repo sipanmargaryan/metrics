@@ -55,14 +55,18 @@ Every request receives a generated ID returned in `X-Request-ID`. Unexpected
 errors and recovered panics include the same ID, with panic stacks encoded in
 the JSON entry. Request bodies, headers, query strings, and SQL statements are
 not captured. Gin's route debug output and GORM's default SQL logger are disabled.
-These logs are available through `make logs SERVICE=app`; shipping to Loki is
-not configured yet.
+These logs are available through `make logs SERVICE=app`. The API also exports
+them asynchronously via OTLP/HTTP to the OpenTelemetry Collector, which batches
+and forwards them to Loki's native `/otlp/v1/logs` endpoint. Request attributes
+remain structured metadata; the `service.name` resource becomes the Loki
+`service_name` label. Pending app logs are flushed during graceful shutdown.
 
-`make up` also starts Prometheus, Loki, and Grafana:
+`make up` also starts Prometheus, Loki, the OpenTelemetry Collector, and Grafana:
 
 - Prometheus: http://localhost:9090 (scrape status under Targets).
 - Grafana: http://localhost:3000, default login `admin` / `admin`.
 - Loki: http://localhost:3100 (readiness at `/ready`).
+- Collector: localhost:4317 (OTLP/gRPC), http://localhost:4318 (OTLP/HTTP).
 - API metrics: http://localhost:8080/metrics.
 
 Grafana automatically provisions the Prometheus data source and the **Metrics API**
@@ -72,9 +76,24 @@ to avoid a separate series for each record ID. Prometheus scrapes every 15 secon
 rate charts need at least two scrapes. Air restarts reset API counters.
 
 Loki runs as a single instance with filesystem storage in the `loki_data` named
-volume, preserved across `make down`. Only the Loki container is configured for
-now; application log shipping and a Grafana Loki data source are not configured.
+volume, preserved across `make down`. API logs arrive through the Collector;
+a Grafana Loki data source is not provisioned.
 The setup follows the [Loki Docker documentation](https://grafana.com/docs/loki/latest/setup/install/docker/).
+
+Query the API logs in Loki with `{service_name="metrics"}`. For example:
+
+```sh
+curl -G http://localhost:3100/loki/api/v1/query_range \
+  --data-urlencode 'query={service_name="metrics"}' --data-urlencode 'limit=20'
+```
+
+Compose reads `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` from `.env`, defaulting to
+`http://otel-collector:4318/v1/logs`. For a locally running API, set
+`OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://localhost:4318/v1/logs`. Without either
+`OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT`, the API logs
+only to stdout. The migration command continues to log only to stdout. Export
+queues are bounded and in memory; prolonged outages or abrupt kills can lose logs.
+Collector forwarding follows the [Loki OTLP documentation](https://grafana.com/docs/loki/latest/send-data/otel/).
 
 Set `PROMETHEUS_PORT`, `LOKI_PORT`, `GRAFANA_PORT`, `GRAFANA_ADMIN_USER`, and
 `GRAFANA_ADMIN_PASSWORD` in `.env` to override defaults. Grafana admin credentials
