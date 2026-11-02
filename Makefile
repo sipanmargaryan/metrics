@@ -11,7 +11,7 @@ help: ## Show available commands
 env: ## Create .env from env_example if it does not exist
 	@test -f .env || cp env_example .env
 
-up: env ## Start the API, PostgreSQL, Prometheus, and Grafana
+up: env ## Start the API, PostgreSQL, Prometheus, Loki, and Grafana
 	@mkdir -p tmp
 	$(COMPOSE) up -d --build --wait
 

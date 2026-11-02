@@ -66,6 +66,16 @@ services:
       timeout: 5s
       retries: 20
 
+  loki:
+    image: grafana/loki:3.7.0
+    command:
+      - -config.file=/etc/loki/loki.yml
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+
   grafana:
     image: grafana/grafana:13.3.0
     ports:
@@ -97,4 +107,5 @@ volumes:
   go_build_cache:
   go_mod_cache:
   prometheus_data:
+  loki_data:
   grafana_data:

@@ -47,10 +47,11 @@ make down
 
 ## Monitoring
 
-`make up` also starts Prometheus and Grafana:
+`make up` also starts Prometheus, Loki, and Grafana:
 
 - Prometheus: http://localhost:9090 (scrape status under Targets).
 - Grafana: http://localhost:3000, default login `admin` / `admin`.
+- Loki: http://localhost:3100 (readiness at `/ready`).
 - API metrics: http://localhost:8080/metrics.
 
 Grafana automatically provisions the Prometheus data source and the **Metrics API**
@@ -59,7 +60,12 @@ errors, p95 latency, goroutines, and memory. Requests and latency use route patt
 to avoid a separate series for each record ID. Prometheus scrapes every 15 seconds;
 rate charts need at least two scrapes. Air restarts reset API counters.
 
-Set `PROMETHEUS_PORT`, `GRAFANA_PORT`, `GRAFANA_ADMIN_USER`, and
+Loki runs as a single instance with filesystem storage in the `loki_data` named
+volume, preserved across `make down`. Only the Loki container is configured for
+now; application log shipping and a Grafana Loki data source are not configured.
+The setup follows the [Loki Docker documentation](https://grafana.com/docs/loki/latest/setup/install/docker/).
+
+Set `PROMETHEUS_PORT`, `LOKI_PORT`, `GRAFANA_PORT`, `GRAFANA_ADMIN_USER`, and
 `GRAFANA_ADMIN_PASSWORD` in `.env` to override defaults. Grafana admin credentials
 are applied when its database is first initialized. Prometheus data (15-day
 retention) and Grafana settings persist in named volumes across `make down`.
