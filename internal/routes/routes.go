@@ -4,12 +4,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"metrics/internal/config"
+	"metrics/internal/helpers"
 	"metrics/internal/order"
 	"metrics/internal/product"
 	"metrics/internal/warehouse"
 )
 
-func Register(router *gin.Engine, app *config.App) {
+func Register(router *gin.Engine, app *config.App, producer helpers.EventProducer) {
 	api := router.Group("/api/v1")
 	warehouseRepo := warehouse.InitWarehouseRepository(app.DB)
 	warehouseService := warehouse.InitWarehouseService(warehouseRepo, app.Config)
@@ -22,7 +23,7 @@ func Register(router *gin.Engine, app *config.App) {
 	product.RegisterRoutes(api.Group("/products"), productHandler)
 
 	orderRepo := order.InitOrderRepository(app.DB)
-	orderService := order.InitOrderService(orderRepo, app.Config)
+	orderService := order.InitOrderService(orderRepo, app.Config, producer)
 	orderHandler := order.InitOrderHandler(orderService)
 
 	order.RegisterRoutes(
