@@ -14,8 +14,8 @@ type WarehouseService interface {
 }
 
 type warehouseService struct {
-	repo   WarehouseRepository
-	config *config.Config
+	repo     WarehouseRepository
+	config   *config.Config
 }
 
 func InitWarehouseService(repo WarehouseRepository, config *config.Config) WarehouseService {

@@ -43,6 +43,11 @@ func main() {
 		fatal("register validators", err)
 	}
 
+	producer, err := helpers.NewKafkaProducer(cfg.Kafka.Brokers)
+	if err != nil {
+		fatal("initialize kafka producer", err)
+	}
+
 	//  This opens connection pool
 	db, err := database.ConnecPostgres(cfg)
 	if err != nil {
@@ -79,7 +84,7 @@ func main() {
 		Config: cfg,
 	}
 
-	routes.Register(router, app)
+	routes.Register(router, app, producer)
 
 	server := &http.Server{
 		Addr:    ":8080",
@@ -114,6 +119,10 @@ func main() {
 
 	if err := server.Shutdown(ctx); err != nil {
 		fatal("server forced to shutdown", err)
+	}
+
+	if err := producer.Close(); err != nil {
+		slog.Error("kafka producer close failed", "error", err)
 	}
 
 	// Close database connections

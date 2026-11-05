@@ -3,7 +3,9 @@ package order
 import (
 	"context"
 	"fmt"
+
 	"metrics/internal/config"
+	"metrics/internal/helpers"
 )
 
 type OrderService interface {
@@ -14,14 +16,16 @@ type OrderService interface {
 }
 
 type orderService struct {
-	repo   OrderRepository
-	config *config.Config
+	repo     OrderRepository
+	config   *config.Config
+	producer helpers.EventProducer
 }
 
-func InitOrderService(repo OrderRepository, config *config.Config) OrderService {
+func InitOrderService(repo OrderRepository, config *config.Config, producer helpers.EventProducer) OrderService {
 	return &orderService{
-		repo:   repo,
-		config: config,
+		repo:     repo,
+		config:   config,
+		producer: producer,
 	}
 }
 
@@ -35,6 +39,11 @@ func (service *orderService) CreateOrder(
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
+	}
+
+	key := helpers.GenerateKafkaKey(order.ID)
+	if err := service.producer.Produce(ctx, "orders", key, order); err != nil {
+		return nil, fmt.Errorf("publish created order %d: %w", order.ID, err)
 	}
 	return order, nil
 }
