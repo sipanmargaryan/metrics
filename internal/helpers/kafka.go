@@ -9,8 +9,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
+
+// Message is the common JSON envelope for every published event.
+type Message struct {
+	MessageID string `json:"message_id"`
+	Data      any    `json:"data"`
+}
 
 // EventProducer is the publishing dependency passed to application services.
 type EventProducer interface {
@@ -31,7 +38,8 @@ type KafkaProducer struct {
 // NewKafkaProducer configures a producer for a plaintext Kafka cluster.
 // Idempotent writes are enabled by franz-go's default configuration.
 // Construction does not verify cluster connectivity.
-func NewKafkaProducer(brokers []string) (*KafkaProducer, error) {
+// Options override the default batch byte limit and 10 ms linger.
+func NewKafkaProducer(brokers []string, options ...kgo.ProducerOpt) (*KafkaProducer, error) {
 	addresses := make([]string, 0, len(brokers))
 	for _, broker := range brokers {
 		if address := strings.TrimSpace(broker); address != "" {
@@ -42,11 +50,16 @@ func NewKafkaProducer(brokers []string) (*KafkaProducer, error) {
 		return nil, errors.New("kafka: at least one broker is required")
 	}
 
-	client, err := kgo.NewClient(
+	clientOptions := []kgo.Opt{
 		kgo.SeedBrokers(addresses...),
-		kgo.RequiredAcks(kgo.AllISRAcks()), //hoq many isr should acknowledge
-		kgo.ProducerLinger(10*time.Millisecond),
-	)
+		kgo.RequiredAcks(kgo.AllISRAcks()),
+		kgo.ProducerBatchMaxBytes(1_000_012),
+		kgo.ProducerLinger(10 * time.Millisecond),
+	}
+	for _, option := range options {
+		clientOptions = append(clientOptions, option)
+	}
+	client, err := kgo.NewClient(clientOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("kafka: initialize producer: %w", err)
 	}
@@ -57,22 +70,41 @@ func NewKafkaProducer(brokers []string) (*KafkaProducer, error) {
 // Use the same key to route related events to the same partition.
 // Internal retries are idempotent. A new Produce call is a new message, even
 // with the same key, so callers must account for duplicates on application retries.
+// Every call generates a UUIDv7 message ID, retained through internal retries.
 func (p *KafkaProducer) Produce(ctx context.Context, topic, key string, event any) error {
-	if strings.TrimSpace(topic) == "" {
-		return errors.New("kafka: topic is required")
-	}
-	value, err := json.Marshal(event)
+	record, err := newKafkaRecord(topic, key, event)
 	if err != nil {
-		return fmt.Errorf("kafka: encode event: %w", err)
+		return err
 	}
-	if err := p.client.ProduceSync(ctx, &kgo.Record{
-		Topic: topic,
-		Key:   []byte(key),
-		Value: value,
-	}).FirstErr(); err != nil {
+	// ProduceSync bypasses linger. Queue with Produce and wait for its callback
+	// so concurrent requests can batch while callers still receive delivery errors.
+	done := make(chan error, 1)
+	p.client.Produce(ctx, record, func(_ *kgo.Record, err error) {
+		done <- err
+	})
+	if err := <-done; err != nil {
 		return fmt.Errorf("kafka: produce to %q: %w", topic, err)
 	}
 	return nil
+}
+
+func newKafkaRecord(topic, key string, event any) (*kgo.Record, error) {
+	if strings.TrimSpace(topic) == "" {
+		return nil, errors.New("kafka: topic is required")
+	}
+	id, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("kafka: generate message ID: %w", err)
+	}
+	value, err := json.Marshal(Message{MessageID: id.String(), Data: event})
+	if err != nil {
+		return nil, fmt.Errorf("kafka: encode event: %w", err)
+	}
+	return &kgo.Record{
+		Topic: topic,
+		Key:   []byte(key),
+		Value: value,
+	}, nil
 }
 
 // Close releases the producer's connections after publishers have stopped.
