@@ -29,6 +29,7 @@ func InitOrderHandler(
 // @Success 201 {object} OrderCreatedResponse
 // @Failure 400 {object} helpers.ErrorResponse
 // @Failure 404 {object} helpers.ErrorResponse
+// @Failure 409 {object} helpers.ErrorResponse
 // @Failure 500 {object} helpers.ErrorResponse
 // @Router /orders [post]
 func (handler *OrderHandler) CreateOrder(c *gin.Context) {
