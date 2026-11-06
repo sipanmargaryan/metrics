@@ -42,7 +42,15 @@ func (service *orderService) CreateOrder(
 	}
 
 	key := helpers.GenerateKafkaKey(order.ID)
-	if err := service.producer.Produce(ctx, "orders", key, order); err != nil {
+	event := OrderCreatedEvent{
+		OrderID:   order.ID,
+		ProductID: order.ProductID,
+		Quantity:  order.Quantity,
+		Price:     order.Product.Price,
+		OrderType: "created",
+		CreatedAt: order.CreatedAt,
+	}
+	if err := service.producer.Produce(ctx, "orders", key, event); err != nil {
 		return nil, fmt.Errorf("publish created order %d: %w", order.ID, err)
 	}
 	return order, nil

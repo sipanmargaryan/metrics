@@ -25,9 +25,11 @@ func InitProductService(repo ProductRepository, config *config.Config) ProductSe
 func (service *productService) CreateProduct(ctx context.Context, request CreateProductRequest) (*Product, error) {
 	name := strings.TrimSpace(request.Name)
 	product, err := service.repo.Create(ctx, &Product{
-		Name:        name,
-		Quantity:    request.Quantity,
-		WarehouseID: request.WarehouseID,
+		Name:              name,
+		Price:             request.Price,
+		InitialQuantity:   request.Quantity,
+		RemainingQuantity: request.Quantity,
+		WarehouseID:       request.WarehouseID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)

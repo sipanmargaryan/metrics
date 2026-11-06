@@ -58,6 +58,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/helpers.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -280,6 +286,12 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Office supplies"
                 },
+                "price": {
+                    "description": "Currency minor units.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 1999
+                },
                 "quantity": {
                     "type": "integer",
                     "minimum": 0,
@@ -298,13 +310,22 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "initial_quantity": {
+                    "type": "integer",
+                    "example": 100
+                },
                 "name": {
                     "type": "string",
                     "example": "Office supplies"
                 },
-                "quantity": {
+                "price": {
+                    "description": "Currency minor units.",
                     "type": "integer",
-                    "example": 100
+                    "example": 1999
+                },
+                "remaining_quantity": {
+                    "type": "integer",
+                    "example": 90
                 },
                 "warehouse_id": {
                     "type": "integer",

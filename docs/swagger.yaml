@@ -32,6 +32,11 @@ definitions:
       name:
         example: Office supplies
         type: string
+      price:
+        description: Currency minor units.
+        example: 1999
+        minimum: 0
+        type: integer
       quantity:
         example: 100
         minimum: 0
@@ -48,11 +53,18 @@ definitions:
       id:
         example: 1
         type: integer
+      initial_quantity:
+        example: 100
+        type: integer
       name:
         example: Office supplies
         type: string
-      quantity:
-        example: 100
+      price:
+        description: Currency minor units.
+        example: 1999
+        type: integer
+      remaining_quantity:
+        example: 90
         type: integer
       warehouse_id:
         example: 1
@@ -105,6 +117,10 @@ paths:
             $ref: '#/definitions/helpers.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.ErrorResponse'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/helpers.ErrorResponse'
         "500":

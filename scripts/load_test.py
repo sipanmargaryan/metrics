@@ -75,7 +75,7 @@ def main():
     status, warehouse = send("POST", "/api/v1/warehouses", 201, {"name": name})
     if status != 201 or not isinstance(warehouse, dict) or not warehouse.get("id"):
         raise RuntimeError("Warehouse setup failed. Check migrations and API logs.")
-    product_payload = {"name": name, "warehouse_id": warehouse["id"], "quantity": 1000}
+    product_payload = {"name": name, "warehouse_id": warehouse["id"], "quantity": 1000, "price": 1999}
     status, product = send("POST", "/api/v1/products", 201, product_payload)
     if status != 201 or not isinstance(product, dict) or not product.get("id"):
         raise RuntimeError("Product setup failed. Check migrations and API logs.")
